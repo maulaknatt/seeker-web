@@ -297,6 +297,7 @@ export default function SingleSessionDashboardPage() {
                       <th className="py-2.5 px-3">Latitude</th>
                       <th className="py-2.5 px-3">Longitude</th>
                       <th className="py-2.5 px-3">Akurasi Radius</th>
+                      <th className="py-2.5 px-3">Google Maps</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-mono">
@@ -309,6 +310,17 @@ export default function SingleSessionDashboardPage() {
                         <td className="py-2.5 px-3 text-blue-600">{loc.latitude.toFixed(6)}</td>
                         <td className="py-2.5 px-3 text-blue-600">{loc.longitude.toFixed(6)}</td>
                         <td className="py-2.5 px-3 text-emerald-700 font-sans">~{Math.round(loc.accuracy)} meter</td>
+                        <td className="py-2.5 px-3 font-sans">
+                          <a
+                            href={`https://www.google.com/maps/place/${loc.latitude}+${loc.longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 text-[11px] font-medium transition-colors border border-blue-200"
+                          >
+                            <span>Google Maps</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

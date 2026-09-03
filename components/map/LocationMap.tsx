@@ -85,6 +85,11 @@ export default function LocationMap({ locations, sessionTitle }: LocationMapProp
                 <div class="text-slate-700"><strong>Latitude:</strong> ${loc.latitude.toFixed(6)}</div>
                 <div class="text-slate-700"><strong>Longitude:</strong> ${loc.longitude.toFixed(6)}</div>
                 <div class="text-slate-700"><strong>Akurasi:</strong> ~${Math.round(loc.accuracy)} meter</div>
+                <div class="pt-1.5 border-t border-slate-200 mt-1">
+                  <a href="https://www.google.com/maps/place/${loc.latitude}+${loc.longitude}" target="_blank" rel="noreferrer" class="inline-flex items-center text-[11px] font-semibold text-blue-600 hover:underline">
+                    📍 Buka di Google Maps ↗
+                  </a>
+                </div>
               </div>
             `;
 
