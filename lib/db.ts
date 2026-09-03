@@ -60,56 +60,64 @@ export async function createSession(
     status: 'active'
   };
 
-  if (supabase) {
-    const { data, error } = await supabase
-      .from('sessions')
-      .insert({
-        id,
-        session_code: sessionCode,
-        title: newSession.title,
-        template_type: newSession.template_type,
-        target_url: newSession.target_url,
-        site_name: newSession.site_name,
-        image_url: newSession.image_url,
-        description: newSession.description,
-        created_at: newSession.created_at,
-        expires_at: expiresAt,
-        status: 'active'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Supabase createSession error:', error);
-    } else if (data) {
-      return data as LocationSession;
-    }
-  }
-
-  // Fallback / local store
+  // Always save to local memory cache first
   mockSessions.set(sessionCode, newSession);
   mockSessions.set(id, newSession);
   mockLocations.set(id, []);
   mockVisitors.set(id, []);
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .insert({
+          id,
+          session_code: sessionCode,
+          title: newSession.title,
+          template_type: newSession.template_type,
+          target_url: newSession.target_url,
+          site_name: newSession.site_name,
+          image_url: newSession.image_url,
+          description: newSession.description,
+          created_at: newSession.created_at,
+          expires_at: expiresAt,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase createSession warning (using local fallback):', error.message);
+      } else if (data) {
+        return data as LocationSession;
+      }
+    } catch (e) {
+      console.warn('Supabase insert exception, using local session:', e);
+    }
+  }
 
   return newSession;
 }
 
 export async function getSessionByCode(code: string): Promise<LocationSession | null> {
   if (supabase) {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('session_code', code)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('session_code', code)
+        .single();
 
-    if (!error && data) {
-      const session = data as LocationSession;
-      if (new Date(session.expires_at) < new Date() && session.status === 'active') {
-        session.status = 'expired';
-        await supabase.from('sessions').update({ status: 'expired' }).eq('id', session.id);
+      if (!error && data) {
+        const session = data as LocationSession;
+        if (new Date(session.expires_at) < new Date() && session.status === 'active') {
+          session.status = 'expired';
+          await supabase.from('sessions').update({ status: 'expired' }).eq('id', session.id);
+        }
+        return session;
       }
-      return session;
+    } catch (e) {
+      console.warn('Supabase query exception:', e);
     }
   }
 
@@ -124,19 +132,23 @@ export async function getSessionByCode(code: string): Promise<LocationSession | 
 
 export async function getSessionById(id: string): Promise<LocationSession | null> {
   if (supabase) {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('id', id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-    if (!error && data) {
-      const session = data as LocationSession;
-      if (new Date(session.expires_at) < new Date() && session.status === 'active') {
-        session.status = 'expired';
-        await supabase.from('sessions').update({ status: 'expired' }).eq('id', session.id);
+      if (!error && data) {
+        const session = data as LocationSession;
+        if (new Date(session.expires_at) < new Date() && session.status === 'active') {
+          session.status = 'expired';
+          await supabase.from('sessions').update({ status: 'expired' }).eq('id', session.id);
+        }
+        return session;
       }
-      return session;
+    } catch (e) {
+      console.warn('Supabase query exception:', e);
     }
   }
 
@@ -156,7 +168,11 @@ export async function endSession(idOrCode: string): Promise<boolean> {
   session.status = 'ended';
 
   if (supabase) {
-    await supabase.from('sessions').update({ status: 'ended' }).eq('id', session.id);
+    try {
+      await supabase.from('sessions').update({ status: 'ended' }).eq('id', session.id);
+    } catch (e) {
+      console.warn('Supabase endSession exception:', e);
+    }
   }
 
   return true;
@@ -185,45 +201,54 @@ export async function addLocation(
     created_at: now.toISOString()
   };
 
-  if (supabase) {
-    const { data, error } = await supabase
-      .from('locations')
-      .insert({
-        id,
-        session_id: sessionId,
-        latitude,
-        longitude,
-        accuracy,
-        altitude,
-        speed,
-        timestamp: record.timestamp,
-        created_at: record.created_at
-      })
-      .select()
-      .single();
-
-    if (!error && data) {
-      return data as LocationRecord;
-    }
-  }
-
+  // Always store in local memory cache
   const locs = mockLocations.get(sessionId) || [];
   locs.push(record);
   mockLocations.set(sessionId, locs);
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('locations')
+        .insert({
+          id,
+          session_id: sessionId,
+          latitude,
+          longitude,
+          accuracy,
+          altitude,
+          speed,
+          timestamp: record.timestamp,
+          created_at: record.created_at
+        })
+        .select()
+        .single();
+
+      if (!error && data) {
+        return data as LocationRecord;
+      }
+    } catch (e) {
+      console.warn('Supabase addLocation exception:', e);
+    }
+  }
 
   return record;
 }
 
 export async function getLocationsForSession(sessionId: string): Promise<LocationRecord[]> {
   if (supabase) {
-    const { data, error } = await supabase
-      .from('locations')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      return data as LocationRecord[];
+      if (!error && data) {
+        return data as LocationRecord[];
+      }
+    } catch (e) {
+      console.warn('Supabase getLocationsForSession exception:', e);
     }
   }
 
@@ -245,18 +270,23 @@ export async function recordVisitor(
     created_at: now
   };
 
+  // Always store in local memory cache
+  const visitors = mockVisitors.get(sessionId) || [];
+  visitors.push(visitor);
+  mockVisitors.set(sessionId, visitors);
+
   if (supabase) {
-    await supabase.from('session_visitors').insert({
-      id,
-      session_id: sessionId,
-      visitor_status: 'visited',
-      permission_status: permissionStatus,
-      created_at: now
-    });
-  } else {
-    const visitors = mockVisitors.get(sessionId) || [];
-    visitors.push(visitor);
-    mockVisitors.set(sessionId, visitors);
+    try {
+      await supabase.from('session_visitors').insert({
+        id,
+        session_id: sessionId,
+        visitor_status: 'visited',
+        permission_status: permissionStatus,
+        created_at: now
+      });
+    } catch (e) {
+      console.warn('Supabase recordVisitor exception:', e);
+    }
   }
 
   return visitor;
@@ -264,12 +294,16 @@ export async function recordVisitor(
 
 export async function getVisitorCount(sessionId: string): Promise<number> {
   if (supabase) {
-    const { count, error } = await supabase
-      .from('session_visitors')
-      .select('*', { count: 'exact', head: true })
-      .eq('session_id', sessionId);
+    try {
+      const { count, error } = await supabase
+        .from('session_visitors')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', sessionId);
 
-    if (!error && count !== null) return count;
+      if (!error && count !== null) return count;
+    } catch (e) {
+      console.warn('Supabase getVisitorCount exception:', e);
+    }
   }
 
   return (mockVisitors.get(sessionId) || []).length;
