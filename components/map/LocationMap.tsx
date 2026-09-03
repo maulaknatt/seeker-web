@@ -37,10 +37,10 @@ export default function LocationMap({ locations, sessionTitle }: LocationMapProp
           attributionControl: false
         });
 
-        // Clean light mode map tiles (CartoDB Positron)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        // Standard OpenStreetMap tiles (no API key required)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
-          subdomains: 'abcd',
+          attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
         leafletInstance.current = map;
