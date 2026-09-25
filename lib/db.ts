@@ -190,6 +190,85 @@ export async function endSession(idOrCode: string): Promise<boolean> {
   return true;
 }
 
+export interface SessionSummary extends LocationSession {
+  visitorCount?: number;
+  locationCount?: number;
+}
+
+export async function getAllSessions(limit = 100): Promise<SessionSummary[]> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (!error && data) {
+        const now = new Date();
+        return data.map((item: any) => {
+          let status = item.status;
+          if (new Date(item.expires_at) < now && status === 'active') {
+            status = 'expired';
+          }
+          return {
+            ...item,
+            status
+          };
+        });
+      }
+    } catch (e) {
+      console.warn('Supabase getAllSessions exception:', e);
+    }
+  }
+
+  // Fallback to memory store
+  const uniqueSessions = new Map<string, LocationSession>();
+  for (const s of mockSessions.values()) {
+    uniqueSessions.set(s.id, s);
+  }
+
+  const now = new Date();
+  const list: SessionSummary[] = Array.from(uniqueSessions.values()).map((s) => {
+    let status = s.status;
+    if (new Date(s.expires_at) < now && status === 'active') {
+      status = 'expired';
+    }
+    const locs = mockLocations.get(s.id) || [];
+    const visitors = mockVisitors.get(s.id) || [];
+    return {
+      ...s,
+      status,
+      locationCount: locs.length,
+      visitorCount: visitors.length
+    };
+  });
+
+  list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return list.slice(0, limit);
+}
+
+export async function deleteSession(id: string): Promise<boolean> {
+  const session = await getSessionById(id);
+  if (supabase && session) {
+    try {
+      await supabase.from('locations').delete().eq('session_id', session.id);
+      await supabase.from('session_visitors').delete().eq('session_id', session.id);
+      await supabase.from('sessions').delete().eq('id', session.id);
+    } catch (e) {
+      console.warn('Supabase deleteSession exception:', e);
+    }
+  }
+
+  if (session) {
+    mockSessions.delete(session.id);
+    mockSessions.delete(session.session_code);
+    mockLocations.delete(session.id);
+    mockVisitors.delete(session.id);
+  }
+  return true;
+}
+
 export async function addLocation(
   sessionId: string,
   latitude: number,

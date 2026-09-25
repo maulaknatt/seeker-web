@@ -16,7 +16,8 @@ import {
   Activity,
   Layers,
   Globe,
-  ExternalLink
+  ExternalLink,
+  History
 } from 'lucide-react';
 import LocationMap from '@/components/map/LocationMap';
 import { LocationSession, LocationRecord } from '@/types';
@@ -177,6 +178,15 @@ export default function SingleSessionDashboardPage() {
           </div>
 
           <div className="flex items-center space-x-2.5">
+            <Link
+              href="/dashboard"
+              className="px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors text-xs font-medium flex items-center space-x-1.5 shadow-sm"
+              title="Daftar Riwayat Sesi"
+            >
+              <History className="w-3.5 h-3.5 text-blue-600" />
+              <span>Riwayat Sesi</span>
+            </Link>
+
             <button
               onClick={() => fetchSessionData(true)}
               disabled={isRefreshing}
