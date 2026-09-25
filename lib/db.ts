@@ -26,7 +26,19 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 
 if (supabaseUrl && supabaseKey) {
   try {
-    supabase = createClient(supabaseUrl, supabaseKey);
+    supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false },
+      global: {
+        fetch: (url, options = {}) => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          return fetch(url, {
+            ...options,
+            signal: options.signal || controller.signal,
+          }).finally(() => clearTimeout(timeoutId));
+        }
+      }
+    });
   } catch (e) {
     console.warn('Failed to initialize Supabase client, falling back to local memory store.', e);
   }

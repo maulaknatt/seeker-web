@@ -7,8 +7,9 @@ export async function GET(
 ) {
   try {
     const { sessionId } = params;
-    let session = await getSessionByCode(sessionId);
-    if (!session) {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+    let session = isUUID ? await getSessionById(sessionId) : await getSessionByCode(sessionId);
+    if (!session && !isUUID) {
       session = await getSessionById(sessionId);
     }
 
